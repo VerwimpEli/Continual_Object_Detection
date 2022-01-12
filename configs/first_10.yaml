@@ -1,0 +1,21 @@
+DATASETS:
+  TRAIN: ("VOC_trainval_1-10", )
+  TEST: ("VOC_test", )
+DATALOADER:
+  NUM_WORKERS: 1
+MODEL:
+  WEIGHTS: "detectron2://ImageNetPretrained/MSRA/R-50.pkl"
+  DEVICE: 'cuda'
+  ROI_HEADS:
+    NAME: 'ILODRoiHead'
+    NUM_CLASSES: 20
+  PROPOSAL_GENERATOR:
+    NAME: 'ILODRPN'
+SOLVER:
+  IMS_PER_BATCH: 4
+  BASE_LR: 0.004
+  MAX_ITER: 10000
+  STEPS: (12500, )
+ILOD:
+  DISTILLATION: False
+VERSION: 2
