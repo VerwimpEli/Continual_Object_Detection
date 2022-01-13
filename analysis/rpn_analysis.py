@@ -167,14 +167,21 @@ def calc_recall(rpn_preds, data_dict, iou_thresholds, max_propsals, task):
 
 
 def average_recall(rpn_preds, data_dict, tasks):
+    """
+    Calculates the average Recall of the RPN for IOU 0.5:0.95:0.05 and with a maximum of 1000 proposals per image.
+    Recall is defined as TP / (TP + FN).
+    """
     ious = np.arange(0.5, 1.0, 0.05)
     max_propsals = 1000
 
-    for task in tasks:
+    for i, task in enumerate(tasks):
         recalls = calc_recall(rpn_preds, data_dict, ious, max_propsals, task)
 
-        print(recalls)
-        print(np.mean(recalls))
+        print(f'\nRecalls Task {i}')
+        print('--------------------')
+        print(f'Average recall: {np.mean(recalls) * 100:.2f} %')
+        for iou, rec in zip(ious, recalls):
+            print(f'Recall @IOU {iou:.2f}: {rec:.3f}')
 
 
 AGGREGATE_FN = np.mean
@@ -187,27 +194,40 @@ iou_thresh = 0.5
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--type', choices=['area', 'score'], default='score')
-    parser.add_argument('--result_file')
+    parser.add_argument('--type', choices=['area', 'score', 'recall'], default='score')
+    parser.add_argument('--rpn_file', help='Path to .csv file with the RPN predictions')
+    parser.add_argument('--result_file', help='Path to write stats files to')
     args = parser.parse_args()
 
-    args.result_file = './results/test/class_results.csv'
+    if args.result_file is None:
+        args.result_file = './rpn_example/stats.csv'
+
+    args.rpn_file = './rpn_example/output_104513/rpn_out.csv'
     dataset = 'voc'
     split = 'test'
 
-    file = './results/test/1/rpn_out.csv'
-
+    # Definition of the tasks, here labels 1-10 and 11-20
     tasks = [range(0, 10), range(10, 20)]
+
+    # Gets dictionary with ground truth boxes. At the moment only for VOC.
     data_dict = get_data_dict(dataset, split)
 
-    rpn_preds = pd.read_csv(file)
+    # Parse the predictions of the RPN and sort by image
+    rpn_preds = pd.read_csv(args.rpn_file)
     rpn_preds['score'] = logit_regression(rpn_preds['score'])
     rpn_preds = rpn_preds.groupby("image_id")
 
-    average_recall(rpn_preds, data_dict, tasks)
+    args.type = 'adf'
+
     if args.type == 'score':
+        # This makes a graphs of the rpn_predictions, showing both the percentage of objects found and their
+        # objectness score
         score_analysis(rpn_preds, data_dict, tasks, args)
+    elif args.type == 'recall':
+        # Calculates the average recall for the RPN for all tasks.
+        average_recall(rpn_preds, data_dict, tasks)
     else:
+        # This makes graphs showing the areas and ratios of the predicted anchor boxes per class
         anchor_box_analysis(rpn_preds, data_dict)
 
 
